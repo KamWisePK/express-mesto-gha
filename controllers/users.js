@@ -1,138 +1,101 @@
+/* eslint-disable object-curly-newline */
 const User = require('../models/user');
-const { errorName, errorCode } = require('../utils/constants');
+const NotFoundError = require('../errors/notFoundError');
+const ValidError = require('../errors/validationError');
+const ConflictError = require('../errors/conflictError');
 
-module.exports.getUsers = async (req, res) => {
-  try {
-    const users = await User.find({});
-    return res.send({ users, message: 'Список пользователей' });
-  } catch (error) {
-    return res
-      .status(errorCode.serverError)
-      .send({ message: errorName.serverError });
-  }
+// GET /users — возвращает всех пользователей
+module.exports.getUsers = (req, res, next) => {
+  User.find({})
+    .then((users) => res.send({ data: users }))
+    .catch(next);
 };
 
-module.exports.getUserById = async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const users = await User.findById(userId);
-    if (!userId) {
-      return res
-        .status(errorCode.notFound)
-        .send({ message: errorName.notFound });
-    }
-    return res.send(users);
-  } catch (error) {
-    return res
-      .status(errorCode.serverError)
-      .send({ message: errorName.serverError });
-  }
+// GET /users/:userId - возвращает пользователя по _id
+module.exports.getUserById = (req, res, next) => {
+  User.findById(req.params.userId)
+    .then((user) => {
+      if (!user) {
+        return next(new NotFoundError('Пользователь по _id не найден'));
+      }
+      return res.send({ data: user });
+    })
+    .catch(next);
 };
 
-module.exports.createUser = (req, res) => {
-  try {
-    const newUser = new User(req.body);
-    if (!newUser) {
-      return res
-        .status(errorCode.badRequest)
-        .send({ message: errorName.badRequest });
-    }
-    return res.status(201).send(newUser.save());
-  } catch (error) {
-    return res.status(500).send(error.message);
-  }
+// POST /users — создаёт пользователя
+module.exports.createUser = (req, res, next) => {
+  const { name, about, avatar, email } = req.body;
+  User.create({
+    name,
+    about,
+    avatar,
+    email,
+  })
+    .then((user) => res.status(201).send({
+      name: user.name,
+      about: user.about,
+      avatar: user.avatar,
+      email: user.email,
+      _id: user._id,
+    }))
+    .catch((err) => {
+      if (err.name === 'ValidationError') {
+        next(new ValidError('Введены некорректные данные'));
+      } else if (err.code === 11000) {
+        next(new ConflictError('Такой пользователь уже существует!)'));
+      } else {
+        next(err);
+      }
+    });
 };
-module.exports.changeUserData = async (req, res) => {
-  try {
-    const { name, about } = req.body;
-    const userData = await User.findByIdAndUpdate(
-      req.user._id,
-      {
-        name,
-        about,
-      },
-      { new: true, runValidators: true },
-    );
-    if ((!name, about)) {
-      return res
-        .status(errorCode.notFound)
-        .send({ message: errorName.notFound });
-    }
-    return res.send(userData);
-  } catch (err) {
-    if (err.name === 'CastError') {
-      return res
-        .status(errorCode.badRequest)
-        .send({ message: errorName.badRequest });
-    }
-    return res
-      .status(errorCode.serverError)
-      .send({ message: errorName.serverError });
-  }
-};
-// module.exports.changeUserData = async (req, res) => {
-//   try {
-//     const { name, about } = req.body;
-//     const userData = await User.findByIdAndUpdate(
-//       req.user._id,
-//       {
-//         name,
-//         about,
-//       },
-//       { new: true, runValidators: true }
-//     );
-//     return res.send(userData);
-//   } catch (err) {
-//     return res.status(500).send(err.message);
-//   }
-// };
 
-module.exports.changeUserAvatar = async (req, res) => {
-  try {
-    const { avatar } = req.body;
-    const userAvatar = await User.findByIdAndUpdate(
-      req.user._id,
-      {
-        avatar,
-      },
-      { new: true, runValidators: true },
-    );
-    if (!userAvatar) {
-      return res
-        .status(errorCode.notFound)
-        .send({ message: errorName.notFound });
-    }
-    return res.send(userAvatar);
-  } catch (err) {
-    if (err.name === 'CastError') {
-      return res
-        .status(errorCode.badRequest)
-        .send({ message: errorName.badRequest });
-    }
-    return res
-      .status(errorCode.serverError)
-      .send({ message: errorName.serverError });
-  }
+// PATCH /users/me — обновляет профиль
+module.exports.changeUserData = (req, res, next) => {
+  const { name, about } = req.body;
+  User.findByIdAndUpdate(
+    req.user._id,
+    { name, about },
+    {
+      new: true,
+      runValidators: true,
+    },
+  )
+    .then((user) => {
+      if (!user) {
+        throw new NotFoundError('Пользователь по указанному _id не найден');
+      }
+      res.send(user);
+    })
+    .catch((err) => {
+      if (err.name === 'ValidationError') {
+        return next(new ValidError('Введены некорректные данные'));
+      }
+      return next(err);
+    });
 };
-// module.exports.changeUserAvatar = async (req, res) => {
-//   try {
-//     const { avatar } = req.body;
-//     if (!avatar) {
-//       throw new mongoose.Error.CastError();
-//     }
-//     const user = await User.findById(req.user._id);
-//     if (!user) {
-//       throw new mongoose.Error.ValidationError();
-//     }
-//     const userAvatar = await User.findByIdAndUpdate(
-//       req.user._id,
-//       {
-//         avatar,
-//       },
-//       { new: true, runValidators: true }
-//     );
-//     return res.send(userAvatar);
-//   } catch (err) {
-//     return res.status(status).send({ message });
-//   }
-// };
+
+// PATCH /users/me/avatar — обновляет аватар
+module.exports.changeUserAvatar = (req, res, next) => {
+  const { avatar } = req.body;
+  User.findByIdAndUpdate(
+    req.user._id,
+    { avatar },
+    {
+      new: true,
+      runValidators: true,
+    },
+  )
+    .then((user) => {
+      if (!user) {
+        throw new NotFoundError('Пользователь по указанному _id не найден');
+      }
+      res.send(user);
+    })
+    .catch((err) => {
+      if (err.name === 'ValidationError') {
+        return next(new ValidError('Введены некорректные данные'));
+      }
+      return next(err);
+    });
+};
