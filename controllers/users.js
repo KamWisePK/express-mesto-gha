@@ -57,52 +57,71 @@ module.exports.createUser = async (req, res) => {
   }
 };
 
-module.exports.changeUserData = (req, res) => {
+module.exports.changeUserData = async (req, res) => {
   const { name, about } = req.body;
   User.findByIdAndUpdate(
     req.user._id,
     { name, about },
-    { new: true, runValidators: true },
+    {
+      new: true,
+      runValidators: true,
+    },
   )
     .then((user) => {
       if (!user) {
-        res
-          .status(NOT_FOUND_STATUS)
-          .send('Пользователь с указанным _id не найден.');
+        throw new Error('NotFound');
       }
-      res.status(SUCCESS_STATUS).send(user);
+      return res
+        .status(SUCCESS_STATUS)
+        .send({ name: user.name, about: user.about });
     })
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        res
-          .status(BAD_REQUEST_STATUS)
-          .send('Переданы некорректные данные при обновлении профиля');
+    .catch((error) => {
+      if (error.message === 'NotFound') {
+        return res
+          .status(NOT_FOUND_STATUS)
+          .send({ message: 'Пользователь с указанным _id не найден.' });
       }
-      res.status(SERVER_ERROR_STATUS).send({ message: err.Message });
+      if (error.name === 'ValidationError') {
+        return res.status(BAD_REQUEST_STATUS).send({
+          message: 'Переданы некорректные данные при обновлении профиля.',
+        });
+      }
+      return res
+        .status(SERVER_ERROR_STATUS)
+        .send({ message: 'Ошибка на стороне сервера' });
     });
 };
 
-module.exports.changeUserAvatar = (req, res) => {
+module.exports.changeUserAvatar = async (req, res) => {
   const { avatar } = req.body;
+
   User.findByIdAndUpdate(
     req.user._id,
     { avatar },
-    { new: true, runValidators: true },
+    {
+      new: true,
+      runValidators: true,
+    },
   )
     .then((user) => {
       if (!user) {
-        res
-          .status(NOT_FOUND_STATUS)
-          .send('Пользователь с указанным _id не найден.');
+        throw new Error('NotFound');
       }
-      res.status(SUCCESS_STATUS).send(user);
+      return res.status(SUCCESS_STATUS).send({ avatar: user.avatar });
     })
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        res
-          .status(BAD_REQUEST_STATUS)
-          .send('Переданы некорректные данные при обновлении аватара.');
+    .catch((error) => {
+      if (error.message === 'NotFound') {
+        return res
+          .status(NOT_FOUND_STATUS)
+          .send({ message: 'Пользователь с указанным _id не найден.' });
       }
-      res.status(SERVER_ERROR_STATUS).send({ message: err.Message });
+      if (error.name === 'ValidationError') {
+        return res.status(BAD_REQUEST_STATUS).send({
+          message: 'Переданы некорректные данные при обновлении профиля.',
+        });
+      }
+      return res
+        .status(SERVER_ERROR_STATUS)
+        .send({ message: 'Ошибка на стороне сервера' });
     });
 };
