@@ -32,7 +32,7 @@ module.exports.getUserById = async (req, res) => {
     if (error.name === 'CastError') {
       return res
         .status(BAD_REQUEST_STATUS)
-        .send({ message: 'передан не валидный id' });
+        .send({ message: 'Передан несуществующий _id' });
     }
     return res
       .status(SERVER_ERROR_STATUS)
@@ -117,7 +117,7 @@ module.exports.changeUserAvatar = async (req, res) => {
       }
       if (error.name === 'ValidationError') {
         return res.status(BAD_REQUEST_STATUS).send({
-          message: 'Переданы некорректные данные при обновлении профиля.',
+          message: 'Переданы некорректные данные при обновлении аватара.',
         });
       }
       return res

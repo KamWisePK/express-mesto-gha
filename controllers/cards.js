@@ -48,7 +48,7 @@ module.exports.deleteCard = async (req, res) => {
   } catch (error) {
     if (error.name === 'CastError') {
       return res
-        .status(BAD_REQUEST_STATUS)
+        .status(NOT_FOUND_STATUS)
         .send({ message: 'Передан неправильный _id.' });
     }
     if (error.message === 'NotFound') {
