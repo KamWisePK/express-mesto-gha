@@ -1,101 +1,108 @@
-/* eslint-disable object-curly-newline */
 const User = require('../models/user');
-const NotFoundError = require('../errors/notFoundError');
-const ValidError = require('../errors/validationError');
-const ConflictError = require('../errors/conflictError');
 
-// GET /users — возвращает всех пользователей
-module.exports.getUsers = (req, res, next) => {
-  User.find({})
-    .then((users) => res.send({ data: users }))
-    .catch(next);
+const {
+  BAD_REQUEST_STATUS,
+  SERVER_ERROR_STATUS,
+  NOT_FOUND_STATUS,
+  CREATED_STATUS,
+  SUCCESS_STATUS,
+} = require('../utils/constants');
+
+module.exports.getUsers = async (req, res) => {
+  try {
+    const user = await User.find({});
+    return res.status(SUCCESS_STATUS).send(user);
+  } catch (err) {
+    return res.status(SERVER_ERROR_STATUS).send({ message: err.Message });
+  }
 };
 
-// GET /users/:userId - возвращает пользователя по _id
-module.exports.getUserById = (req, res, next) => {
-  User.findById(req.params.userId)
-    .then((user) => {
-      if (!user) {
-        return next(new NotFoundError('Пользователь по _id не найден'));
-      }
-      return res.send({ data: user });
-    })
-    .catch(next);
+module.exports.getUserById = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId).orFail(new Error('NotFound'));
+
+    return res.status(SUCCESS_STATUS).send(user);
+  } catch (error) {
+    if (error.message === 'NotFound') {
+      return res
+        .status(NOT_FOUND_STATUS)
+        .send({ message: 'Пользователь с указанным _id не найден.' });
+    }
+    if (error.name === 'CastError') {
+      return res
+        .status(BAD_REQUEST_STATUS)
+        .send({ message: 'передан не валидный id' });
+    }
+    return res
+      .status(SERVER_ERROR_STATUS)
+      .send({ message: 'Ошибка на стороне сервера' });
+  }
 };
 
-// POST /users — создаёт пользователя
-module.exports.createUser = (req, res, next) => {
-  const { name, about, avatar, email } = req.body;
-  User.create({
-    name,
-    about,
-    avatar,
-    email,
-  })
-    .then((user) => res.status(201).send({
-      name: user.name,
-      about: user.about,
-      avatar: user.avatar,
-      email: user.email,
-      _id: user._id,
-    }))
-    .catch((err) => {
-      if (err.name === 'ValidationError') {
-        next(new ValidError('Введены некорректные данные'));
-      } else if (err.code === 11000) {
-        next(new ConflictError('Такой пользователь уже существует!)'));
-      } else {
-        next(err);
-      }
-    });
+module.exports.createUser = async (req, res) => {
+  try {
+    const newUser = await new User(req.body);
+
+    return res.status(CREATED_STATUS).send(await newUser.save());
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      return res.status(BAD_REQUEST_STATUS).send({
+        message: 'Переданы некорректные данные при создании пользователя.',
+      });
+    }
+    return res
+      .status(SERVER_ERROR_STATUS)
+      .send({ message: 'Ошибка на стороне сервера' });
+  }
 };
 
-// PATCH /users/me — обновляет профиль
-module.exports.changeUserData = (req, res, next) => {
+module.exports.changeUserData = (req, res) => {
   const { name, about } = req.body;
   User.findByIdAndUpdate(
     req.user._id,
     { name, about },
-    {
-      new: true,
-      runValidators: true,
-    },
+    { new: true, runValidators: true },
   )
     .then((user) => {
       if (!user) {
-        throw new NotFoundError('Пользователь по указанному _id не найден');
+        res
+          .status(NOT_FOUND_STATUS)
+          .send('Пользователь с указанным _id не найден.');
       }
-      res.send(user);
+      res.status(SUCCESS_STATUS).send(user);
     })
     .catch((err) => {
-      if (err.name === 'ValidationError') {
-        return next(new ValidError('Введены некорректные данные'));
+      if (err.name === 'CastError') {
+        res
+          .status(BAD_REQUEST_STATUS)
+          .send('Переданы некорректные данные при обновлении профиля');
       }
-      return next(err);
+      res.status(SERVER_ERROR_STATUS).send({ message: err.Message });
     });
 };
 
-// PATCH /users/me/avatar — обновляет аватар
-module.exports.changeUserAvatar = (req, res, next) => {
+module.exports.changeUserAvatar = (req, res) => {
   const { avatar } = req.body;
   User.findByIdAndUpdate(
     req.user._id,
     { avatar },
-    {
-      new: true,
-      runValidators: true,
-    },
+    { new: true, runValidators: true },
   )
     .then((user) => {
       if (!user) {
-        throw new NotFoundError('Пользователь по указанному _id не найден');
+        res
+          .status(NOT_FOUND_STATUS)
+          .send('Пользователь с указанным _id не найден.');
       }
-      res.send(user);
+      res.status(SUCCESS_STATUS).send(user);
     })
     .catch((err) => {
-      if (err.name === 'ValidationError') {
-        return next(new ValidError('Введены некорректные данные'));
+      if (err.name === 'CastError') {
+        res
+          .status(BAD_REQUEST_STATUS)
+          .send('Переданы некорректные данные при обновлении аватара.');
       }
-      return next(err);
+      res.status(SERVER_ERROR_STATUS).send({ message: err.Message });
     });
 };

@@ -1,17 +1,13 @@
-const errorName = {
-  ok: 'Успешно',
-  created: 'Создано',
-  badRequest: ' переданы некорректные данные в методы создания карточки, пользователя, обновления аватара пользователя или профиля',
-  notFound: 'карточка или пользователь не найден или был запрошен несуществующий роут',
-  serverError: 'На сервере произошла ошибка',
-};
+const BAD_REQUEST_STATUS = 400;
+const SERVER_ERROR_STATUS = 500;
+const NOT_FOUND_STATUS = 404;
+const SUCCESS_STATUS = 200;
+const CREATED_STATUS = 201;
 
-const errorCode = {
-  ok: 200,
-  created: 201,
-  badRequest: 400,
-  notFound: 404,
-  serverError: 500,
+module.exports = {
+  BAD_REQUEST_STATUS,
+  SERVER_ERROR_STATUS,
+  NOT_FOUND_STATUS,
+  CREATED_STATUS,
+  SUCCESS_STATUS,
 };
-
-module.exports = { errorCode, errorName };

@@ -1,5 +1,11 @@
 const Card = require('../models/card');
-const { errorName, errorCode } = require('../utils/constants');
+const {
+  BAD_REQUEST_STATUS,
+  SERVER_ERROR_STATUS,
+  NOT_FOUND_STATUS,
+  CREATED_STATUS,
+  SUCCESS_STATUS,
+} = require('../utils/constants');
 
 module.exports.createCard = (req, res) => {
   try {
@@ -7,21 +13,23 @@ module.exports.createCard = (req, res) => {
     const newCard = new Card({ name, link, owner: req.user._id });
     if (!newCard) {
       return res
-        .status(errorCode.badRequest)
-        .send({ message: errorName.badRequest });
+        .status(BAD_REQUEST_STATUS)
+        .send({
+          message: 'Переданы некорректные данные при создании карточки.',
+        });
     }
-    return res.status(201).send(newCard.save());
-  } catch (error) {
-    return res.status(500).send(error.message);
+    return res.status(CREATED_STATUS).send(newCard);
+  } catch (err) {
+    return res.status(SERVER_ERROR_STATUS).send({ message: err.Message });
   }
 };
 
 module.exports.getCards = async (req, res) => {
   try {
     const cards = await Card.find({});
-    return res.send(cards);
-  } catch (error) {
-    return res.status(500).send(error.message);
+    return res.status(SUCCESS_STATUS).send(cards);
+  } catch (err) {
+    return res.status(SERVER_ERROR_STATUS).send({ message: err.Message });
   }
 };
 
@@ -30,12 +38,14 @@ module.exports.deleteCard = async (req, res) => {
     const cards = await Card.findByIdAndDelete(req.params.cardId);
     if (!cards) {
       return res
-        .status(errorCode.badRequest)
-        .send({ message: errorName.badRequest });
+        .status(NOT_FOUND_STATUS)
+        .send({
+          message: 'Карточка с указанным _id не найдена.',
+        });
     }
     return res.send({ cards, message: 'Карточка удалена' });
-  } catch (error) {
-    return res.status(500).send(error.message);
+  } catch (err) {
+    return res.status(SERVER_ERROR_STATUS).send({ message: err.Message });
   }
 };
 
@@ -48,33 +58,21 @@ module.exports.likeCard = async (req, res) => {
     );
     if (!likedCard) {
       return res
-        .status(errorCode.notFound)
-        .send({ message: errorName.notFound });
+        .status(NOT_FOUND_STATUS)
+        .send({ message: 'Передан несуществующий _id карточки.' });
     }
     return res.send({ likedCard, message: 'Лайк успешно поставлен' });
   } catch (err) {
     if (err.name === 'CastError') {
       return res
-        .status(errorCode.badRequest)
-        .send({ message: errorName.badRequest });
+        .status(BAD_REQUEST_STATUS)
+        .send({ message: 'Переданы некорректные данные для постановки лайка' });
     }
     return res
-      .status(errorCode.serverError)
-      .send({ message: errorName.serverError });
+      .status(SERVER_ERROR_STATUS)
+      .send({ message: err.Message });
   }
 };
-// module.exports.likeCard = async (req, res) => {
-//   try {
-//     const likedCard = await Card.findByIdAndUpdate(
-//       req.params.cardId,
-//       { $addToSet: { likes: req.user._id } },
-//       { new: true },
-//     );
-//     return res.send({ likedCard, message: 'Лайк успешно поставлен' });
-//   } catch (error) {
-//     return res.status(500).send(error.message);
-//   }
-// };
 
 module.exports.dislikeCard = async (req, res) => {
   try {
@@ -85,18 +83,18 @@ module.exports.dislikeCard = async (req, res) => {
     );
     if (!dislikedCard) {
       return res
-        .status(errorCode.notFound)
-        .send({ message: errorName.notFound });
+        .status(NOT_FOUND_STATUS)
+        .send({ message: 'Передан несуществующий _id карточки.' });
     }
     return res.send({ dislikedCard, message: 'Лайк успешно убран' });
   } catch (err) {
     if (err.name === 'CastError') {
       return res
-        .status(errorCode.badRequest)
-        .send({ message: errorName.badRequest });
+        .status(BAD_REQUEST_STATUS)
+        .send({ message: 'Переданы некорректные данные для постановки лайка' });
     }
     return res
-      .status(errorCode.serverError)
-      .send({ message: errorName.serverError });
+      .status(SERVER_ERROR_STATUS)
+      .send({ message: err.Message });
   }
 };
