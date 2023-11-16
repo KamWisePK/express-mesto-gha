@@ -1,8 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const BadRequest = require('../errors/BadRequestError'); // 400
-const NotFound = require('../errors/NotFoundError'); // 404
-const ConflictError = require('../errors/ConflictError');
+const BadRequest = require('../errors/BadRequestError');
+const NotFound = require('../errors/NotFoundError');
 const User = require('../models/user');
 
 module.exports.getUsers = (req, res, next) => {
@@ -30,34 +29,16 @@ module.exports.getUserById = (req, res, next) => {
     });
 };
 
-module.exports.createUsers = (req, res, next) => {
+module.exports.createUser = (req, res, next) => {
   const {
-    name, about, avatar, email, password,
+    email, password, name, about, avatar,
   } = req.body;
-  bcrypt.hash(password, 10).then((hash) => {
-    User
-      .create({
-        name, about, avatar, email, password: hash,
-      })
-      .then(() => res.status(201).send(
-        {
-          data: {
-            name, about, avatar, email,
-          },
-        },
-      ))
-      // eslint-disable-next-line consistent-return
-      .catch((err) => {
-        if (err.code === 11000) {
-          return next(new ConflictError('Пользователь с таким email уже существует'));
-        }
-        if (err.name === 'ValidationError') {
-          return next(new BadRequest('Некорректные данные'));
-        }
-        next(err);
-      });
-  })
-    .catch(next);
+  bcrypt.hash(password, 10)
+    .then((hash) => User.create({
+      email, password: hash, name, about, avatar,
+    })
+      .then((user) => res.status(201).send(user))
+      .catch(next));
 };
 
 module.exports.changeUserData = (req, res, next) => {

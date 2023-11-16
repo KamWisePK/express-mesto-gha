@@ -10,13 +10,16 @@ const cardRouter = require('./routes/cards');
 const auth = require('./middlewares/auth');
 
 const { PORT = 3000 } = process.env;
+const { validateRegister, validateLogin } = require('./validation/userValidation');
 const { createUser, login } = require('./controllers/users');
 
 const app = express();
 app.use(express.json());
 
-app.post('/signin', login);
-app.post('/signup', createUser);
+app.use(helmet());
+
+app.post('/signin', validateLogin, login);
+app.post('/signup', validateRegister, createUser);
 
 app.use(auth);
 
@@ -24,8 +27,6 @@ mongoose.connect('mongodb://127.0.0.1:27017/mestodb', {});
 
 app.use(userRouter);
 app.use(cardRouter);
-
-app.use(helmet());
 
 app.use(errors());
 app.use((err, req, res, next) => {
