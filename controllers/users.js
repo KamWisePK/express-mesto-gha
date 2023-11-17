@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const BadRequest = require('../errors/BadRequestError');
 const NotFound = require('../errors/NotFoundError');
 const User = require('../models/user');
+const JWT_SECRET = require('../constants/config');
 
 module.exports.getUsers = (req, res, next) => {
   User
@@ -83,7 +84,7 @@ module.exports.login = (req, res, next) => {
   return User
     .findUserByCredentials(email, password)
     .then((user) => {
-      const token = jwt.sign({ _id: user._id }, 'some-secret-key', {
+      const token = jwt.sign({ _id: user._id }, JWT_SECRET, {
         expiresIn: '7d',
       });
       res.send({ token });
